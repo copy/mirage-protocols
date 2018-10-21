@@ -100,7 +100,7 @@ module type IP = sig
       header and passes the result onto either the [tcp] or [udp]
       function, or the [default] function for unknown IP protocols. *)
 
-  val allocate_frame: t -> dst:ipaddr -> proto:[`ICMP | `TCP | `UDP] -> buffer * int
+  val allocate_frame: t -> dst:ipaddr -> src:ipaddr option -> proto:[`ICMP | `TCP | `UDP] -> buffer * int
   (** [allocate_frame t ~dst ~proto] returns a pair [(pkt, len)] such that
       [Cstruct.sub pkt 0 len] is the IP header (including the link layer part) of a
       packet going to [dst] for protocol [proto].  The space in [pkt] after the
@@ -119,7 +119,7 @@ module type IP = sig
       assumes that frame is of the form returned by [allocate_frame],
       i.e., that it contains the link-layer part. *)
 
-  val pseudoheader : t -> dst:ipaddr -> proto:[< `TCP | `UDP ] -> int -> buffer
+  val pseudoheader : t -> dst:ipaddr -> src:ipaddr option -> proto:[< `TCP | `UDP ] -> int -> buffer
   (** [pseudoheader t dst proto len] gives a pseudoheader suitable for use in
       TCP or UDP checksum calculation based on [t]. *)
 
@@ -290,7 +290,7 @@ module type UDP = sig
       return a concrete handler or a [None], which results in the
       datagram being dropped. *)
 
-  val write: ?src_port:int -> dst:ipaddr -> dst_port:int -> t -> buffer ->
+  val write: ?src:ipaddr -> ?src_port:int -> dst:ipaddr -> dst_port:int -> t -> buffer ->
     (unit, error) result io
   (** [write ~src_port ~dst ~dst_port udp data] is a thread
       that writes [data] from an optional [src_port] to a [dst]
@@ -363,6 +363,8 @@ module type TCP = sig
   val dst: flow -> ipaddr * int
   (** Get the destination IPv4 address and destination port that a
       flow is currently connected to. *)
+
+  val src: flow -> ipaddr * int
 
   val write_nodelay: flow -> buffer -> (unit, write_error) result io
   (** [write_nodelay flow buffer] writes the contents of [buffer]

@@ -59,11 +59,11 @@ module type IP = sig
     t ->
     tcp:callback -> udp:callback -> default:(proto:int -> callback) ->
     buffer -> unit io
-  val allocate_frame: t -> dst:ipaddr -> proto:[`ICMP | `TCP | `UDP] -> buffer * int
+  val allocate_frame: t -> dst:ipaddr -> src:ipaddr option -> proto:[`ICMP | `TCP | `UDP] -> buffer * int
   val write: t -> buffer -> buffer -> (unit, error) result io
   val writev: t -> buffer -> buffer list -> (unit, error) result io
   val checksum: buffer -> buffer list -> int
-  val pseudoheader : t -> dst:ipaddr -> proto:[< `TCP | `UDP ] -> int -> buffer
+  val pseudoheader : t -> dst:ipaddr -> src:ipaddr option -> proto:[< `TCP | `UDP ] -> int -> buffer
   val src: t -> dst:ipaddr -> ipaddr
   val set_ip: t -> ipaddr -> unit io
   val get_ip: t -> ipaddr list
@@ -115,7 +115,7 @@ module type UDP = sig
   include Mirage_device.S
   type callback = src:ipaddr -> dst:ipaddr -> src_port:int -> buffer -> unit io
   val input: listeners:(dst_port:int -> callback option) -> t -> ipinput
-  val write: ?src_port:int -> dst:ipaddr -> dst_port:int -> t -> buffer ->
+  val write: ?src:ipaddr -> ?src_port:int -> dst:ipaddr -> dst_port:int -> t -> buffer ->
     (unit, error) result io
 end
 
@@ -143,6 +143,7 @@ module type TCP = sig
   and type write_error := write_error
 
   val dst: flow -> ipaddr * int
+  val src: flow -> ipaddr * int
   val write_nodelay: flow -> buffer -> (unit, write_error) result io
   val writev_nodelay: flow -> buffer list -> (unit, write_error) result io
   val create_connection: ?keepalive:Keepalive.t -> t -> ipaddr * int -> (flow, error) result io
